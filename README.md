@@ -85,6 +85,13 @@ An interactive gamified platform for creating and delivering learning modules, q
    # NextAuth
    NEXTAUTH_URL=http://localhost:3000
    NEXTAUTH_SECRET=your-secret-key-here
+
+   # OpenRouter Chatbot
+   OPENROUTER_API_KEY=your-openrouter-api-key
+   OPENROUTER_MODEL=openai/gpt-oss-120b
+   OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+   OPENROUTER_APP_NAME=Questly English Learning
+   OPENROUTER_APP_URL=http://localhost:3000
    
    # Optional: PocketBase (if using external media storage)
    POCKETBASE_URL=your-pocketbase-url
@@ -316,6 +323,13 @@ Platform interaktif dengan gamifikasi untuk membuat dan menyajikan modul pembela
    # NextAuth
    NEXTAUTH_URL=http://localhost:3000
    NEXTAUTH_SECRET=kunci-rahasia-anda-disini
+
+   # OpenRouter Chatbot
+   OPENROUTER_API_KEY=api-key-openrouter-anda
+   OPENROUTER_MODEL=openai/gpt-oss-120b
+   OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+   OPENROUTER_APP_NAME=Questly English Learning
+   OPENROUTER_APP_URL=http://localhost:3000
    
    # Opsional: PocketBase (jika menggunakan external media storage)
    POCKETBASE_URL=url-pocketbase-anda

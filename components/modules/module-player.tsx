@@ -12,6 +12,7 @@ import { MultipleChoice } from '@/components/question-types/multiple-choice';
 import { ImageSelect } from '@/components/question-types/image-select';
 import { SpeakButton } from '@/components/ui/speak-button';
 import { VoiceInputButton } from '@/components/ui/voice-input-button';
+import { ModuleChatbot } from '@/components/modules/module-chatbot';
 import {
     saveUserProgress,
     saveItemResponse,
@@ -580,6 +581,16 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                     )}
                 </div>
             </footer >
+            <ModuleChatbot
+                moduleId={module.id}
+                moduleTitle={module.title}
+                moduleDescription={module.description}
+                currentItemType={currentItem.type}
+                currentTitle={currentItem.title}
+                currentQuestion={currentItem.question}
+                currentIndex={currentIndex}
+                totalItems={totalItems}
+            />
         </div >
     );
 }

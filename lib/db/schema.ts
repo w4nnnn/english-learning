@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
 // ===== USERS =====
 export const users = sqliteTable('users', {
@@ -75,3 +75,44 @@ export const userItemResponses = sqliteTable('user_item_responses', {
     attemptCount: integer('attempt_count').default(1),
     answeredAt: integer('answered_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
+
+// ===== CHAT SESSIONS (riwayat chat per user + modul) =====
+export const chatSessions = sqliteTable('chat_sessions', {
+    id: text('id').primaryKey(),
+    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    moduleId: text('module_id').references(() => modules.id, { onDelete: 'cascade' }).notNull(),
+    title: text('title'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+}, (table) => ({
+    userIdx: index('chat_sessions_user_idx').on(table.userId),
+    userModuleIdx: index('chat_sessions_user_module_idx').on(table.userId, table.moduleId),
+    updatedAtIdx: index('chat_sessions_updated_at_idx').on(table.updatedAt),
+}));
+
+// ===== CHAT MESSAGES =====
+export const chatMessages = sqliteTable('chat_messages', {
+    id: text('id').primaryKey(),
+    sessionId: text('session_id').references(() => chatSessions.id, { onDelete: 'cascade' }).notNull(),
+    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    moduleId: text('module_id').references(() => modules.id, { onDelete: 'cascade' }).notNull(),
+    role: text('role').notNull(), // 'user' | 'assistant' | 'system'
+    content: text('content').notNull(),
+    model: text('model'),
+    promptTokens: integer('prompt_tokens'),
+    completionTokens: integer('completion_tokens'),
+    totalTokens: integer('total_tokens'),
+    cost: text('cost'), // OpenRouter usage.cost bisa desimal
+    createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+}, (table) => ({
+    sessionIdx: index('chat_messages_session_idx').on(table.sessionId),
+    userIdx: index('chat_messages_user_idx').on(table.userId),
+    moduleIdx: index('chat_messages_module_idx').on(table.moduleId),
+    createdAtIdx: index('chat_messages_created_at_idx').on(table.createdAt),
+    sessionCreatedAtIdx: index('chat_messages_session_created_at_idx').on(table.sessionId, table.createdAt),
+}));
+
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type ChatSessionInsert = typeof chatSessions.$inferInsert;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type ChatMessageInsert = typeof chatMessages.$inferInsert;
