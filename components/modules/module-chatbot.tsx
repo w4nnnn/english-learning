@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, MessageCircle, SendHorizonal, User } from 'lucide-react';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -81,6 +83,49 @@ function createLocalMessageId(prefix: 'user' | 'assistant') {
     return `local-${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function getMarkdownComponents(isUser: boolean): Components {
+    const linkClass = isUser
+        ? 'underline decoration-primary-foreground/70 font-medium'
+        : 'text-primary underline decoration-primary/60 font-medium';
+    const inlineCodeClass = isUser
+        ? 'rounded bg-white/20 px-1 py-0.5 font-mono text-[0.8em]'
+        : 'rounded bg-slate-200 px-1 py-0.5 font-mono text-[0.8em] text-slate-800';
+    const preClass = isUser
+        ? 'my-2 overflow-x-auto rounded-lg bg-black/25 p-2 text-primary-foreground'
+        : 'my-2 overflow-x-auto rounded-lg bg-slate-900 p-2 text-slate-100';
+    const quoteClass = isUser
+        ? 'my-2 border-l-2 border-primary-foreground/60 pl-3 opacity-95'
+        : 'my-2 border-l-2 border-primary/40 pl-3 text-slate-700';
+
+    return {
+        p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap break-words">{children}</p>,
+        ul: ({ children }) => <ul className="mb-2 ml-5 list-disc space-y-1">{children}</ul>,
+        ol: ({ children }) => <ol className="mb-2 ml-5 list-decimal space-y-1">{children}</ol>,
+        li: ({ children }) => <li>{children}</li>,
+        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        em: ({ children }) => <em className="italic">{children}</em>,
+        blockquote: ({ children }) => <blockquote className={quoteClass}>{children}</blockquote>,
+        a: ({ href, children }) => (
+            <a
+                href={href}
+                target="_blank"
+                rel="noreferrer noopener"
+                className={linkClass}
+            >
+                {children}
+            </a>
+        ),
+        code: ({ className, children }) => {
+            if (className?.startsWith('language-')) {
+                return <code className="font-mono text-[0.82em]">{children}</code>;
+            }
+
+            return <code className={inlineCodeClass}>{children}</code>;
+        },
+        pre: ({ children }) => <pre className={preClass}>{children}</pre>,
+    };
+}
+
 export function ModuleChatbot({
     moduleId,
     moduleTitle,
@@ -101,6 +146,8 @@ export function ModuleChatbot({
     const [streamError, setStreamError] = useState<string | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
     const bottomRef = useRef<HTMLDivElement | null>(null);
+    const userMarkdownComponents = useMemo(() => getMarkdownComponents(true), []);
+    const assistantMarkdownComponents = useMemo(() => getMarkdownComponents(false), []);
 
     const chatContext = useMemo(() => ({
         moduleTitle,
@@ -369,7 +416,12 @@ export function ModuleChatbot({
                                                         : 'bg-muted text-foreground',
                                                 ].join(' ')}
                                             >
-                                                <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    components={isUser ? userMarkdownComponents : assistantMarkdownComponents}
+                                                >
+                                                    {message.content}
+                                                </ReactMarkdown>
                                                 {message.pending && (
                                                     <div className="mt-2 flex items-center text-xs opacity-80">
                                                         <Spinner className="mr-1 h-3 w-3" />

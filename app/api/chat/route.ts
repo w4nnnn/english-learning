@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 const MAX_MESSAGE_LENGTH = 2000;
+const DEFAULT_MEMORY_WINDOW_MESSAGES = 4;
 
 type ChatRequestBody = {
     moduleId?: string;
@@ -51,6 +52,11 @@ type OpenRouterStreamChunk = {
     };
 };
 
+type OpenRouterChatMessage = {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+};
+
 function toErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga';
 }
@@ -78,6 +84,26 @@ function buildTutorSystemPrompt(context?: ChatRequestBody['context']) {
 
 function sseEncode(event: string, payload: Record<string, unknown>) {
     return `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+}
+
+function normalizeOpenRouterRole(role: string): OpenRouterChatMessage['role'] {
+    if (role === 'assistant' || role === 'system') {
+        return role;
+    }
+    return 'user';
+}
+
+function getMemoryWindowSize() {
+    const parsed = Number.parseInt(
+        process.env.OPENROUTER_MEMORY_WINDOW || `${DEFAULT_MEMORY_WINDOW_MESSAGES}`,
+        10
+    );
+
+    if (!Number.isFinite(parsed)) {
+        return DEFAULT_MEMORY_WINDOW_MESSAGES;
+    }
+
+    return Math.min(Math.max(parsed, 1), 12);
 }
 
 async function getAuthorizedUser() {
@@ -203,12 +229,22 @@ export async function POST(request: NextRequest) {
             content: message,
         });
 
-        const recentMessages = await getRecentMessagesForPrompt(session.id, 24);
-
         const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+        const memoryWindowMessages = getMemoryWindowSize();
         const openRouterUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
         const appTitle = process.env.OPENROUTER_APP_NAME || 'Questly English Learning';
         const appReferer = process.env.OPENROUTER_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+        const allMessages = await getRecentMessagesForPrompt(session.id, 40);
+        const recentMessages = allMessages.slice(-memoryWindowMessages);
+
+        const promptMessages: OpenRouterChatMessage[] = [
+            { role: 'system', content: buildTutorSystemPrompt(body.context) },
+            ...recentMessages.map((chatMessage) => ({
+                role: normalizeOpenRouterRole(chatMessage.role),
+                content: chatMessage.content,
+            })),
+        ];
 
         const upstream = await fetch(`${openRouterUrl}/chat/completions`, {
             method: 'POST',
@@ -223,13 +259,7 @@ export async function POST(request: NextRequest) {
                 stream: true,
                 temperature: 0.5,
                 user: user.userId,
-                messages: [
-                    { role: 'system', content: buildTutorSystemPrompt(body.context) },
-                    ...recentMessages.map((chatMessage) => ({
-                        role: chatMessage.role,
-                        content: chatMessage.content,
-                    })),
-                ],
+                messages: promptMessages,
             }),
         });
 
@@ -269,7 +299,11 @@ export async function POST(request: NextRequest) {
                 };
 
                 try {
-                    emit('meta', { sessionId: session.id, model });
+                    emit('meta', {
+                        sessionId: session.id,
+                        model,
+                        memoryWindow: memoryWindowMessages,
+                    });
 
                     const reader = upstream.body!.getReader();
 
