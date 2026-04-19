@@ -1,6 +1,6 @@
 {
   "name": "belajar-bahasa-inggris-dengan-ai",
-  "version": "2.7.2",
+  "version": "2.7.5",
   "private": true,
   "scripts": {
     "dev": "next dev",
