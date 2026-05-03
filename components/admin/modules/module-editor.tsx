@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { createModuleItem, updateModule, updateModuleItem, deleteModuleItem, reorderModuleItems } from '@/lib/actions/modules';
 import type { Module, ModuleItem } from '@/lib/actions/modules';
 import { toast } from 'sonner';
@@ -76,6 +76,8 @@ import { ModuleIconPicker } from '@/components/admin/modules/module-icon-picker'
 interface ModuleEditorProps {
     module: Module & { items: ModuleItem[] };
 }
+
+const AUTOSAVE_DELAY_MS = 1200;
 
 // Sortable Item Wrapper Component
 function SortableModuleItem({
@@ -233,6 +235,7 @@ function DragOverlayItem({ item }: { item: ModuleItem }) {
 export function ModuleEditor({ module }: ModuleEditorProps) {
     const [isPending, startTransition] = useTransition();
     const [items, setItems] = useState(module.items);
+    const initialModuleIconKey = resolveModuleIconKey(module.iconKey);
     const [moduleInfo, setModuleInfo] = useState<{
         title: string;
         description: string;
@@ -240,13 +243,85 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
     }>({
         title: module.title,
         description: module.description || '',
-        iconKey: resolveModuleIconKey(module.iconKey),
+        iconKey: initialModuleIconKey,
     });
+    const moduleInfoAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const moduleInfoInitializedRef = useRef(false);
+    const lastSavedModuleInfoRef = useRef({
+        title: module.title,
+        description: module.description || '',
+        iconKey: initialModuleIconKey,
+    });
+    const itemUpdateTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
+    const pendingItemUpdatesRef = useRef<Record<string, Partial<ModuleItem>>>({});
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [showPublishDialog, setShowPublishDialog] = useState(false);
     const SelectedIcon = getModuleIcon(moduleInfo.iconKey);
+
+    useEffect(() => {
+        if (!moduleInfoInitializedRef.current) {
+            moduleInfoInitializedRef.current = true;
+            return;
+        }
+
+        const lastSaved = lastSavedModuleInfoRef.current;
+        const isUnchanged =
+            moduleInfo.title === lastSaved.title &&
+            moduleInfo.description === lastSaved.description &&
+            moduleInfo.iconKey === lastSaved.iconKey;
+
+        if (isUnchanged) {
+            return;
+        }
+
+        if (moduleInfoAutosaveTimerRef.current) {
+            clearTimeout(moduleInfoAutosaveTimerRef.current);
+        }
+
+        moduleInfoAutosaveTimerRef.current = setTimeout(() => {
+            const payload = {
+                title: moduleInfo.title,
+                description: moduleInfo.description || undefined,
+                iconKey: moduleInfo.iconKey,
+            };
+
+            void updateModule(module.id, payload)
+                .then(() => {
+                    lastSavedModuleInfoRef.current = {
+                        title: moduleInfo.title,
+                        description: moduleInfo.description || '',
+                        iconKey: moduleInfo.iconKey,
+                    };
+                })
+                .catch((error) => {
+                    console.error('Module autosave failed:', error);
+                });
+        }, AUTOSAVE_DELAY_MS);
+
+        return () => {
+            if (moduleInfoAutosaveTimerRef.current) {
+                clearTimeout(moduleInfoAutosaveTimerRef.current);
+            }
+        };
+    }, [module.id, moduleInfo.description, moduleInfo.iconKey, moduleInfo.title, updateModule]);
+
+    useEffect(() => {
+        return () => {
+            Object.values(itemUpdateTimersRef.current).forEach((timer) => {
+                if (timer) {
+                    clearTimeout(timer);
+                }
+            });
+
+            Object.entries(pendingItemUpdatesRef.current).forEach(([itemId, data]) => {
+                if (Object.keys(data).length > 0) {
+                    void updateModuleItem(itemId, data);
+                }
+            });
+        };
+    }, [updateModuleItem]);
 
     // DnD Sensors
     const sensors = useSensors(
@@ -275,6 +350,10 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
     };
 
     const handleSaveModule = (shouldPublish: boolean) => {
+        if (moduleInfoAutosaveTimerRef.current) {
+            clearTimeout(moduleInfoAutosaveTimerRef.current);
+        }
+
         startTransition(async () => {
             await updateModule(module.id, {
                 title: moduleInfo.title,
@@ -282,6 +361,11 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
                 iconKey: moduleInfo.iconKey,
                 isPublished: shouldPublish,
             });
+            lastSavedModuleInfoRef.current = {
+                title: moduleInfo.title,
+                description: moduleInfo.description || '',
+                iconKey: moduleInfo.iconKey,
+            };
             setShowPublishDialog(false);
             toast.success(shouldPublish ? 'Module saved & published!' : 'Module saved as draft!');
         });
@@ -337,17 +421,45 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
     };
 
     const handleUpdateItem = (itemId: string, data: Partial<ModuleItem>) => {
-        setItems(items.map(item =>
+        setItems((prevItems) => prevItems.map(item =>
             item.id === itemId ? { ...item, ...data } : item
         ));
 
-        startTransition(async () => {
-            await updateModuleItem(itemId, data);
-        });
+        pendingItemUpdatesRef.current[itemId] = {
+            ...(pendingItemUpdatesRef.current[itemId] || {}),
+            ...data,
+        };
+
+        if (itemUpdateTimersRef.current[itemId]) {
+            clearTimeout(itemUpdateTimersRef.current[itemId]);
+        }
+
+        itemUpdateTimersRef.current[itemId] = setTimeout(() => {
+            const pendingUpdate = pendingItemUpdatesRef.current[itemId];
+
+            if (!pendingUpdate) {
+                return;
+            }
+
+            void updateModuleItem(itemId, pendingUpdate)
+                .catch((error) => {
+                    console.error('Item autosave failed:', error);
+                })
+                .finally(() => {
+                    delete pendingItemUpdatesRef.current[itemId];
+                    itemUpdateTimersRef.current[itemId] = null;
+                });
+        }, AUTOSAVE_DELAY_MS);
     };
 
     const handleDeleteItem = (itemId: string) => {
-        setItems(items.filter(item => item.id !== itemId));
+        const timer = itemUpdateTimersRef.current[itemId];
+        if (timer) {
+            clearTimeout(timer);
+        }
+        delete itemUpdateTimersRef.current[itemId];
+        delete pendingItemUpdatesRef.current[itemId];
+        setItems((prevItems) => prevItems.filter(item => item.id !== itemId));
         startTransition(async () => {
             await deleteModuleItem(itemId);
             toast.success('Item deleted');
