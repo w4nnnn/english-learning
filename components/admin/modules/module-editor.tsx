@@ -70,6 +70,7 @@ import { SelectImageEditor } from './item-types/select-image-editor';
 import { McImageEditor } from './item-types/mc-image-editor';
 import { QuestionImageEditor, QuestionVideoEditor } from './item-types/question-media-editor';
 import { VoiceAnswerEditor } from './item-types/voice-answer-editor';
+import { LongTextEditor, LongTextImageEditor } from './item-types/long-text-editor';
 import { ModuleIconPicker } from '@/components/admin/modules/module-icon-picker';
 
 interface ModuleEditorProps {
@@ -627,6 +628,12 @@ function ItemEditor({
 
         case 'question_video':
             return <QuestionVideoEditor item={item} onUpdate={onUpdate} />;
+
+        case 'long_text':
+            return <LongTextEditor item={item} onUpdate={onUpdate} />;
+
+        case 'long_text_image':
+            return <LongTextImageEditor item={item} onUpdate={onUpdate} />;
 
         case 'voice_answer':
             return <VoiceAnswerEditor item={item} onUpdate={onUpdate} />;

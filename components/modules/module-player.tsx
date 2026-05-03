@@ -10,6 +10,7 @@ import remarkGfm from 'remark-gfm';
 import { WordOrdering } from '@/components/question-types/word-ordering';
 import { MultipleChoice } from '@/components/question-types/multiple-choice';
 import { ImageSelect } from '@/components/question-types/image-select';
+import { LongTextAnswer } from '@/components/question-types/long-text-answer';
 import { SpeakButton } from '@/components/ui/speak-button';
 import { VoiceInputButton } from '@/components/ui/voice-input-button';
 import { ModuleChatbot } from '@/components/modules/module-chatbot';
@@ -38,6 +39,9 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
     const currentItem = items[currentIndex];
     const totalItems = items.length;
     const progress = ((currentIndex + 1) / totalItems) * 100;
+
+    const contentTypes = ['header', 'material', 'material_image', 'material_video'];
+    const openEndedTypes = ['long_text', 'long_text_image'];
 
     // Save progress periodically
     useEffect(() => {
@@ -73,15 +77,23 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
         if (!currentItem) return;
 
         // Content types that don't need answer checking
-        if (['header', 'material', 'material_image', 'material_video'].includes(currentItem.type)) {
+        if (contentTypes.includes(currentItem.type)) {
             handleNext();
             return;
         }
 
-        if (status === 'idle') {
-            if (!userAnswer) return;
+        const normalizedAnswer = typeof userAnswer === 'string' ? userAnswer.trim() : userAnswer;
+        const hasAnswer = typeof normalizedAnswer === 'string'
+            ? normalizedAnswer.length > 0
+            : Boolean(normalizedAnswer);
+        const isOpenEnded = openEndedTypes.includes(currentItem.type);
 
-            const isCorrect = userAnswer.toLowerCase() === currentItem.correctAnswer?.toLowerCase();
+        if (status === 'idle') {
+            if (!hasAnswer) return;
+
+            const isCorrect = isOpenEnded
+                ? true
+                : String(normalizedAnswer).toLowerCase() === currentItem.correctAnswer?.toLowerCase();
 
             if (isCorrect) {
                 setStatus('correct');
@@ -98,7 +110,13 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
 
             // Save response and force progress update if correct
             try {
-                const result = await saveItemResponse(userId, module.id, currentItem.id, userAnswer, isCorrect);
+                const result = await saveItemResponse(
+                    userId,
+                    module.id,
+                    currentItem.id,
+                    String(userAnswer ?? ''),
+                    isCorrect
+                );
                 if (!result.success) {
                     console.error('Failed to save response:', result.error);
                 }
@@ -132,6 +150,12 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
             </div>
         );
     }
+
+    const isContentType = contentTypes.includes(currentItem.type);
+    const isOpenEndedType = openEndedTypes.includes(currentItem.type);
+    const hasAnswer = typeof userAnswer === 'string'
+        ? userAnswer.trim().length > 0
+        : Boolean(userAnswer);
 
     return (
         <div className="min-h-screen bg-gradient-elegant flex flex-col">
@@ -471,6 +495,36 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                                     </div>
                                 )}
 
+                                {/* Long Text - essay answer */}
+                                {currentItem.type === 'long_text' && (
+                                    <LongTextAnswer
+                                        value={typeof userAnswer === 'string' ? userAnswer : ''}
+                                        onChange={(value) => setUserAnswer(value)}
+                                        disabled={status !== 'idle'}
+                                    />
+                                )}
+
+                                {/* Long Text with Image */}
+                                {currentItem.type === 'long_text_image' && (
+                                    <div className="space-y-4">
+                                        {currentItem.content && (
+                                            <div className="rounded-xl overflow-hidden border border-border bg-slate-50">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img
+                                                    src={currentItem.content}
+                                                    alt="Question"
+                                                    className="w-full h-auto max-h-64 object-contain"
+                                                />
+                                            </div>
+                                        )}
+                                        <LongTextAnswer
+                                            value={typeof userAnswer === 'string' ? userAnswer : ''}
+                                            onChange={(value) => setUserAnswer(value)}
+                                            disabled={status !== 'idle'}
+                                        />
+                                    </div>
+                                )}
+
                                 {/* Voice Answer */}
                                 {currentItem.type === 'voice_answer' && (
                                     <div className="space-y-4">
@@ -557,7 +611,7 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                     ) : (
                         <button
                             onClick={handleCheck}
-                            disabled={hearts === 0 || (status === 'idle' && !userAnswer && !['header', 'material', 'material_image', 'material_video'].includes(currentItem.type))}
+                            disabled={hearts === 0 || (status === 'idle' && !hasAnswer && !isContentType)}
                             className={`
                                 w-full py-4 rounded-2xl font-bold text-lg
                                 flex items-center justify-center gap-2
@@ -570,9 +624,11 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                         >
                             <span>
                                 {status === 'idle'
-                                    ? ['header', 'material', 'material_image', 'material_video'].includes(currentItem.type)
+                                    ? isContentType
                                         ? 'Lanjutkan'
-                                        : 'Periksa Jawaban'
+                                        : isOpenEndedType
+                                            ? 'Kirim Jawaban'
+                                            : 'Periksa Jawaban'
                                     : 'Lanjutkan'
                                 }
                             </span>
