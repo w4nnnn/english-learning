@@ -13,11 +13,11 @@ import {
     Save,
     ChevronDown,
     ChevronUp,
-    BookOpen,
     AlertTriangle,
     MessageCircleQuestion,
     Star,
 } from 'lucide-react';
+import { getModuleIcon, resolveModuleIconKey, type ModuleIconKey } from '@/lib/module-icons';
 import ReactMarkdown from 'react-markdown';
 import {
     AlertDialog,
@@ -70,6 +70,7 @@ import { SelectImageEditor } from './item-types/select-image-editor';
 import { McImageEditor } from './item-types/mc-image-editor';
 import { QuestionImageEditor, QuestionVideoEditor } from './item-types/question-media-editor';
 import { VoiceAnswerEditor } from './item-types/voice-answer-editor';
+import { ModuleIconPicker } from '@/components/admin/modules/module-icon-picker';
 
 interface ModuleEditorProps {
     module: Module & { items: ModuleItem[] };
@@ -231,14 +232,20 @@ function DragOverlayItem({ item }: { item: ModuleItem }) {
 export function ModuleEditor({ module }: ModuleEditorProps) {
     const [isPending, startTransition] = useTransition();
     const [items, setItems] = useState(module.items);
-    const [moduleInfo, setModuleInfo] = useState({
+    const [moduleInfo, setModuleInfo] = useState<{
+        title: string;
+        description: string;
+        iconKey: ModuleIconKey;
+    }>({
         title: module.title,
         description: module.description || '',
+        iconKey: resolveModuleIconKey(module.iconKey),
     });
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [showPublishDialog, setShowPublishDialog] = useState(false);
+    const SelectedIcon = getModuleIcon(moduleInfo.iconKey);
 
     // DnD Sensors
     const sensors = useSensors(
@@ -271,6 +278,7 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
             await updateModule(module.id, {
                 title: moduleInfo.title,
                 description: moduleInfo.description || undefined,
+                iconKey: moduleInfo.iconKey,
                 isPublished: shouldPublish,
             });
             setShowPublishDialog(false);
@@ -380,7 +388,7 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
             <div className="lg:col-span-1">
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-6">
                     <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-primary" />
+                        <SelectedIcon className="w-4 h-4 text-primary" />
                         Module Info
                     </h2>
 
@@ -404,6 +412,12 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
                                 placeholder="Describe this module..."
                             />
                         </div>
+
+                        <ModuleIconPicker
+                            value={moduleInfo.iconKey}
+                            onChange={(iconKey) => setModuleInfo({ ...moduleInfo, iconKey })}
+                            description="Choose an icon for this module."
+                        />
 
                         <button
                             onClick={handleSaveClick}

@@ -1,18 +1,25 @@
 'use client';
 
 import { createModule } from '@/lib/actions/modules';
+import { DEFAULT_MODULE_ICON_KEY, type ModuleIconKey } from '@/lib/module-icons';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, BookOpen, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { ModuleIconPicker } from '@/components/admin/modules/module-icon-picker';
 
 export default function NewModulePage() {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        title: string;
+        description: string;
+        iconKey: ModuleIconKey;
+    }>({
         title: '',
         description: '',
+        iconKey: DEFAULT_MODULE_ICON_KEY,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -27,6 +34,7 @@ export default function NewModulePage() {
             const result = await createModule({
                 title: formData.title,
                 description: formData.description || undefined,
+                iconKey: formData.iconKey,
                 isPublished: false,
             });
 
@@ -84,6 +92,12 @@ export default function NewModulePage() {
                             className="w-full px-4 py-3 border border-border rounded-xl bg-background focus-elegant transition-elegant resize-none"
                         />
                     </div>
+
+                    <ModuleIconPicker
+                        value={formData.iconKey}
+                        onChange={(iconKey) => setFormData({ ...formData, iconKey })}
+                        description="Pick an icon to represent this module."
+                    />
 
                     <div className="flex gap-3 pt-4 border-t border-border">
                         <button

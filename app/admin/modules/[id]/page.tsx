@@ -1,8 +1,9 @@
 import { getModuleWithItems } from '@/lib/actions/modules';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Users } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { ModuleEditor } from '@/components/admin/modules/module-editor';
+import { getModuleIcon } from '@/lib/module-icons';
 
 export default async function EditModulePage({
     params,
@@ -15,6 +16,8 @@ export default async function EditModulePage({
     if (!moduleData) {
         notFound();
     }
+
+    const ModuleIcon = getModuleIcon(moduleData.iconKey);
 
     return (
         <div className="space-y-6">
@@ -29,7 +32,7 @@ export default async function EditModulePage({
                     </Link>
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
-                            <BookOpen className="w-6 h-6 text-white" />
+                            <ModuleIcon className="w-6 h-6 text-white" />
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-foreground">{moduleData.title}</h1>

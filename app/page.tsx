@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, ChevronRight, Sparkles, Trophy, Target } from 'lucide-react';
 import { AppHeader } from '@/components/layouts/app-header';
+import { getModuleIcon } from '@/lib/module-icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,6 +120,7 @@ export default async function HomePage() {
               const completedItems = progress?.completedItems || 0;
               const progressPercent = Math.round((completedItems / totalItems) * 100);
               const isCompleted = progress?.status === 'completed';
+              const ModuleIcon = getModuleIcon(module.iconKey);
 
               return (
                 <Link
@@ -140,9 +142,14 @@ export default async function HomePage() {
                   </div>
 
                   {/* Module Info */}
-                  <h3 className="font-bold text-lg text-foreground mb-2 group-hover:text-primary transition-elegant">
-                    {module.title}
-                  </h3>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+                      <ModuleIcon className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-elegant">
+                      {module.title}
+                    </h3>
+                  </div>
                   {module.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
                       {module.description}

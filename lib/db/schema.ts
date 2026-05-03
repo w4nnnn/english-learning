@@ -18,6 +18,7 @@ export const modules = sqliteTable('modules', {
     title: text('title').notNull(),
     description: text('description'),
     coverImage: text('cover_image'),
+    iconKey: text('icon_key').default('BookOpen'),
     order: integer('order').notNull().default(0),
     isPublished: integer('is_published', { mode: 'boolean' }).default(false),
     createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
