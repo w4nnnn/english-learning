@@ -11,6 +11,7 @@ import { WordOrdering } from '@/components/question-types/word-ordering';
 import { MultipleChoice } from '@/components/question-types/multiple-choice';
 import { ImageSelect } from '@/components/question-types/image-select';
 import { LongTextAnswer } from '@/components/question-types/long-text-answer';
+import { ShortTextAnswer } from '@/components/question-types/short-text-answer';
 import { SpeakButton } from '@/components/ui/speak-button';
 import { VoiceInputButton } from '@/components/ui/voice-input-button';
 import { ModuleChatbot } from '@/components/modules/module-chatbot';
@@ -41,7 +42,7 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
     const progress = ((currentIndex + 1) / totalItems) * 100;
 
     const contentTypes = ['header', 'material', 'material_image', 'material_video'];
-    const openEndedTypes = ['long_text', 'long_text_image'];
+    const openEndedTypes = ['short_answer', 'long_text', 'long_text_image'];
 
     // Save progress periodically
     useEffect(() => {
@@ -493,6 +494,15 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                                             disabled={status !== 'idle'}
                                         />
                                     </div>
+                                )}
+
+                                {/* Short Answer */}
+                                {currentItem.type === 'short_answer' && (
+                                    <ShortTextAnswer
+                                        value={typeof userAnswer === 'string' ? userAnswer : ''}
+                                        onChange={(value) => setUserAnswer(value)}
+                                        disabled={status !== 'idle'}
+                                    />
                                 )}
 
                                 {/* Long Text - essay answer */}

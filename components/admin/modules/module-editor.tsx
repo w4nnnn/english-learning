@@ -70,7 +70,7 @@ import { SelectImageEditor } from './item-types/select-image-editor';
 import { McImageEditor } from './item-types/mc-image-editor';
 import { QuestionImageEditor, QuestionVideoEditor } from './item-types/question-media-editor';
 import { VoiceAnswerEditor } from './item-types/voice-answer-editor';
-import { LongTextEditor, LongTextImageEditor } from './item-types/long-text-editor';
+import { LongTextEditor, LongTextImageEditor, ShortAnswerEditor } from './item-types/long-text-editor';
 import { ModuleIconPicker } from '@/components/admin/modules/module-icon-picker';
 
 interface ModuleEditorProps {
@@ -391,6 +391,8 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
                 options: defaultOptions,
                 correctAnswer: type === 'multiple_choice' || type === 'question_image' || type === 'question_video'
                     ? 'a'
+                    : type === 'short_answer'
+                        ? 'Sample short answer'
                     : type === 'arrange_words'
                         ? 'word1 word2 word3'
                         : undefined,
@@ -407,6 +409,8 @@ export function ModuleEditor({ module }: ModuleEditorProps) {
                 question: !['header', 'material', 'material_image', 'material_video'].includes(type) ? 'Enter your question here...' : null,
                 correctAnswer: type === 'multiple_choice' || type === 'question_image' || type === 'question_video'
                     ? 'a'
+                    : type === 'short_answer'
+                        ? 'Sample short answer'
                     : type === 'arrange_words'
                         ? 'word1 word2 word3'
                         : null,
@@ -740,6 +744,9 @@ function ItemEditor({
 
         case 'question_video':
             return <QuestionVideoEditor item={item} onUpdate={onUpdate} />;
+
+        case 'short_answer':
+            return <ShortAnswerEditor item={item} onUpdate={onUpdate} />;
 
         case 'long_text':
             return <LongTextEditor item={item} onUpdate={onUpdate} />;
