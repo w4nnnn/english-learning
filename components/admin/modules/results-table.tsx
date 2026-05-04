@@ -191,10 +191,20 @@ export function ResultsTable({ results }: ResultsTableProps) {
                                                                             Benar: {response.correctAnswer}
                                                                         </span>
                                                                     )}
+                                                                    {response.aiScore !== null && (
+                                                                        <span className="text-blue-600">
+                                                                            AI Score: {response.aiScore}%
+                                                                        </span>
+                                                                    )}
                                                                     <span className="text-muted-foreground">
                                                                         Percobaan: {response.attemptCount}x
                                                                     </span>
                                                                 </div>
+                                                                {response.aiFeedback && (
+                                                                    <p className="mt-1 text-xs text-slate-600">
+                                                                        AI: {response.aiFeedback}
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     ))}

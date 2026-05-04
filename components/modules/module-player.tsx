@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, Heart, Zap, CheckCircle, X, ChevronRight, Sparkles } from 'lucide-react';
+import { ArrowLeft, Heart, Zap, CheckCircle, X, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { WordOrdering } from '@/components/question-types/word-ordering';
@@ -20,6 +20,7 @@ import {
     saveItemResponse,
     updateModuleProgress,
 } from '@/lib/actions/user-progress';
+import { gradeOpenEndedAnswer } from '@/lib/actions/grade-open-ended';
 import type { Module, ModuleItem } from '@/lib/actions/modules';
 
 interface ModulePlayerProps {
@@ -33,6 +34,9 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
     const [currentIndex, setCurrentIndex] = useState(initialProgress?.currentItemIndex ?? 0);
     const [status, setStatus] = useState<'idle' | 'correct' | 'wrong'>('idle');
     const [userAnswer, setUserAnswer] = useState<any>(null);
+    const [isGrading, setIsGrading] = useState(false);
+    const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+    const [aiScore, setAiScore] = useState<number | null>(null);
     const [hearts, setHearts] = useState(5);
     const [xp, setXp] = useState(0);
 
@@ -61,6 +65,8 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
             setCurrentIndex(currentIndex + 1);
             setStatus('idle');
             setUserAnswer(null);
+            setAiFeedback(null);
+            setAiScore(null);
         } else {
             // Finish
             await updateModuleProgress(userId, module.id, {
@@ -76,6 +82,7 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
 
     const handleCheck = async () => {
         if (!currentItem) return;
+        if (isGrading) return;
 
         // Content types that don't need answer checking
         if (contentTypes.includes(currentItem.type)) {
@@ -92,9 +99,46 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
         if (status === 'idle') {
             if (!hasAnswer) return;
 
-            const isCorrect = isOpenEnded
-                ? true
-                : String(normalizedAnswer).toLowerCase() === currentItem.correctAnswer?.toLowerCase();
+            let isCorrect = false;
+            let aiPayload:
+                | { score?: number; feedback?: string; reason?: string; model?: string }
+                | undefined;
+
+            if (isOpenEnded) {
+                setIsGrading(true);
+                setAiFeedback(null);
+                setAiScore(null);
+
+                try {
+                    const result = await gradeOpenEndedAnswer({
+                        moduleId: module.id,
+                        itemId: currentItem.id,
+                        question: currentItem.question,
+                        expectedAnswer: currentItem.correctAnswer,
+                        userAnswer: String(normalizedAnswer),
+                        itemType: currentItem.type,
+                    });
+
+                    isCorrect = result.isCorrect;
+                    aiPayload = {
+                        score: result.score,
+                        feedback: result.feedback,
+                        reason: result.reason,
+                        model: result.model,
+                    };
+
+                    setAiFeedback(result.feedback);
+                    setAiScore(result.score);
+                } catch (error) {
+                    console.error('AI grading failed:', error);
+                    toast.error('Gagal menilai jawaban. Coba lagi.');
+                    return;
+                } finally {
+                    setIsGrading(false);
+                }
+            } else {
+                isCorrect = String(normalizedAnswer).toLowerCase() === currentItem.correctAnswer?.toLowerCase();
+            }
 
             if (isCorrect) {
                 setStatus('correct');
@@ -116,7 +160,8 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                     module.id,
                     currentItem.id,
                     String(userAnswer ?? ''),
-                    isCorrect
+                    isCorrect,
+                    aiPayload
                 );
                 if (!result.success) {
                     console.error('Failed to save response:', result.error);
@@ -142,6 +187,8 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
     const handleRetry = () => {
         setStatus('idle');
         setUserAnswer(null);
+        setAiFeedback(null);
+        setAiScore(null);
     };
 
     if (!currentItem) {
@@ -501,7 +548,7 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                                     <ShortTextAnswer
                                         value={typeof userAnswer === 'string' ? userAnswer : ''}
                                         onChange={(value) => setUserAnswer(value)}
-                                        disabled={status !== 'idle'}
+                                        disabled={status !== 'idle' || isGrading}
                                     />
                                 )}
 
@@ -510,7 +557,7 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                                     <LongTextAnswer
                                         value={typeof userAnswer === 'string' ? userAnswer : ''}
                                         onChange={(value) => setUserAnswer(value)}
-                                        disabled={status !== 'idle'}
+                                        disabled={status !== 'idle' || isGrading}
                                     />
                                 )}
 
@@ -530,7 +577,7 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                                         <LongTextAnswer
                                             value={typeof userAnswer === 'string' ? userAnswer : ''}
                                             onChange={(value) => setUserAnswer(value)}
-                                            disabled={status !== 'idle'}
+                                            disabled={status !== 'idle' || isGrading}
                                         />
                                     </div>
                                 )}
@@ -601,6 +648,16 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                         </div>
                     )}
 
+                    {aiFeedback && status !== 'idle' && (
+                        <div className="mb-4 p-4 bg-slate-50 rounded-2xl border border-border">
+                            <p className="text-sm font-semibold text-slate-700 mb-1">Feedback AI</p>
+                            <p className="text-sm text-slate-600">{aiFeedback}</p>
+                            {aiScore !== null && (
+                                <p className="text-xs text-slate-500 mt-2">Skor AI: {aiScore}%</p>
+                            )}
+                        </div>
+                    )}
+
                     {/* Action Buttons */}
                     {status === 'wrong' ? (
                         <div className="flex gap-3">
@@ -621,7 +678,7 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                     ) : (
                         <button
                             onClick={handleCheck}
-                            disabled={hearts === 0 || (status === 'idle' && !hasAnswer && !isContentType)}
+                            disabled={isGrading || hearts === 0 || (status === 'idle' && !hasAnswer && !isContentType)}
                             className={`
                                 w-full py-4 rounded-2xl font-bold text-lg
                                 flex items-center justify-center gap-2
@@ -637,11 +694,14 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                                     ? isContentType
                                         ? 'Lanjutkan'
                                         : isOpenEndedType
-                                            ? 'Kirim Jawaban'
+                                            ? isGrading
+                                                ? 'Menilai...'
+                                                : 'Kirim Jawaban'
                                             : 'Periksa Jawaban'
                                     : 'Lanjutkan'
                                 }
                             </span>
+                            {isGrading && <Loader2 className="w-5 h-5 animate-spin" />}
                             <ChevronRight className="w-5 h-5" />
                         </button>
                     )}

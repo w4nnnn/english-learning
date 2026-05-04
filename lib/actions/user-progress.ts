@@ -24,7 +24,13 @@ export async function saveItemResponse(
     moduleId: string,
     itemId: string,
     userAnswer: string,
-    isCorrect: boolean
+    isCorrect: boolean,
+    aiData?: {
+        score?: number | null;
+        feedback?: string | null;
+        reason?: string | null;
+        model?: string | null;
+    }
 ): Promise<{ success: boolean; error?: string }> {
     try {
         // Check if response already exists
@@ -44,6 +50,13 @@ export async function saveItemResponse(
                     isCorrect,
                     attemptCount: (existing.attemptCount ?? 1) + 1,
                     answeredAt: new Date(),
+                    ...(aiData ? {
+                        aiScore: aiData.score ?? null,
+                        aiFeedback: aiData.feedback ?? null,
+                        aiReason: aiData.reason ?? null,
+                        aiModel: aiData.model ?? null,
+                        aiGradedAt: new Date(),
+                    } : {}),
                 })
                 .where(eq(userItemResponses.id, existing.id));
         } else {
@@ -53,6 +66,11 @@ export async function saveItemResponse(
                 itemId,
                 userAnswer,
                 isCorrect,
+                aiScore: aiData?.score ?? null,
+                aiFeedback: aiData?.feedback ?? null,
+                aiReason: aiData?.reason ?? null,
+                aiModel: aiData?.model ?? null,
+                aiGradedAt: aiData ? new Date() : undefined,
             });
         }
         return { success: true };
@@ -174,6 +192,9 @@ export type StudentResult = {
         userAnswer: string | null;
         correctAnswer: string | null;
         isCorrect: boolean | null;
+        aiScore: number | null;
+        aiFeedback: string | null;
+        aiReason: string | null;
         attemptCount: number;
     }[];
 };
@@ -241,6 +262,9 @@ export async function getModuleStudentResults(moduleId: string): Promise<Student
                     userAnswer: response?.userAnswer || null,
                     correctAnswer: item.correctAnswer,
                     isCorrect: response?.isCorrect ?? null,
+                    aiScore: response?.aiScore ?? null,
+                    aiFeedback: response?.aiFeedback || null,
+                    aiReason: response?.aiReason || null,
                     attemptCount: response?.attemptCount || 0,
                 };
             }),

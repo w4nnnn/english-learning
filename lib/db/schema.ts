@@ -73,6 +73,11 @@ export const userItemResponses = sqliteTable('user_item_responses', {
     itemId: text('item_id').references(() => moduleItems.id, { onDelete: 'cascade' }).notNull(),
     userAnswer: text('user_answer'),
     isCorrect: integer('is_correct', { mode: 'boolean' }),
+    aiScore: integer('ai_score'),
+    aiFeedback: text('ai_feedback'),
+    aiReason: text('ai_reason'),
+    aiModel: text('ai_model'),
+    aiGradedAt: integer('ai_graded_at', { mode: 'timestamp' }),
     attemptCount: integer('attempt_count').default(1),
     answeredAt: integer('answered_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
