@@ -140,7 +140,7 @@ export function MediaUploader({
                     {youtubeId && (
                         <div className="aspect-video bg-black">
                             <iframe
-                                src={`https://www.youtube.com/embed/${youtubeId}`}
+                                src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
                                 className="w-full h-full"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen

@@ -97,6 +97,8 @@ An interactive gamified platform for creating and delivering learning modules, q
    POCKETBASE_URL=your-pocketbase-url
    POCKETBASE_ADMIN_EMAIL=admin@example.com
    POCKETBASE_ADMIN_PASSWORD=your-password
+   POCKETBASE_MEDIA_COLLECTION=demo_english_learn
+   POCKETBASE_FILE_FIELD=file
    ```
 
 4. **Initialize the database**
@@ -335,6 +337,8 @@ Platform interaktif dengan gamifikasi untuk membuat dan menyajikan modul pembela
    POCKETBASE_URL=url-pocketbase-anda
    POCKETBASE_ADMIN_EMAIL=admin@example.com
    POCKETBASE_ADMIN_PASSWORD=password-anda
+   POCKETBASE_MEDIA_COLLECTION=demo_english_learn
+   POCKETBASE_FILE_FIELD=file
    ```
 
 4. **Inisialisasi database**

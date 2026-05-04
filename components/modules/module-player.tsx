@@ -386,7 +386,7 @@ export function ModulePlayer({ module, userId, initialProgress }: ModulePlayerPr
                                     {youtubeId && (
                                         <div className="aspect-video">
                                             <iframe
-                                                src={`https://www.youtube.com/embed/${youtubeId}`}
+                                                src={`https://www.youtube-nocookie.com/embed/${youtubeId}`}
                                                 className="w-full h-full"
                                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                                 allowFullScreen
