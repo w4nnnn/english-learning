@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -68,13 +68,21 @@ export function WordOrdering({ initialWords, onOrderChange, disabled }: WordOrde
     });
 
     const [activeId, setActiveId] = useState<string | null>(null);
+    const initialWordsKey = useMemo(() => JSON.stringify(initialWords), [initialWords]);
+    const lastInitialWordsKeyRef = useRef<string | null>(null);
+    const lastAnswerRef = useRef<string>('');
 
     useEffect(() => {
+        if (lastInitialWordsKeyRef.current === initialWordsKey) {
+            return;
+        }
+
+        lastInitialWordsKeyRef.current = initialWordsKey;
         setItems({
             bank: initialWords.map((word, index) => ({ id: `${word}-${index}`, word })),
             answer: []
         });
-    }, [initialWords]);
+    }, [initialWords, initialWordsKey]);
 
     const sensors = useSensors(
         useSensor(MouseSensor, {
@@ -182,6 +190,12 @@ export function WordOrdering({ initialWords, onOrderChange, disabled }: WordOrde
     };
 
     useEffect(() => {
+        const answerText = items.answer.map(i => i.word).join(' ');
+        if (lastAnswerRef.current === answerText) {
+            return;
+        }
+
+        lastAnswerRef.current = answerText;
         onOrderChange(items.answer.map(i => i.word));
     }, [items.answer, onOrderChange]);
 
